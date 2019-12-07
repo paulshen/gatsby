@@ -347,6 +347,57 @@ async function findGraphQLTags(
               },
             })
           },
+          AssignmentExpression(path, state) {
+            const { node } = path
+            if (
+              node.left.type === `MemberExpression` &&
+              node.left.object.type === `Identifier` &&
+              node.left.object.name === `exports`
+            ) {
+              path.traverse({
+                TaggedTemplateExpression(innerPath) {
+                  const { ast: gqlAst, isGlobal, hash, text } = getGraphQLTag(
+                    innerPath
+                  )
+                  if (!gqlAst) return
+
+                  if (isGlobal) warnForGlobalTag(file)
+
+                  gqlAst.definitions.forEach(def => {
+                    generateQueryName({
+                      def,
+                      hash,
+                      file,
+                    })
+                  })
+
+                  let templateLoc
+                  innerPath.traverse({
+                    TemplateElement(templateElementPath) {
+                      templateLoc = templateElementPath.node.loc
+                    },
+                  })
+
+                  const docInFile = {
+                    filePath: file,
+                    doc: gqlAst,
+                    text: text,
+                    hash: hash,
+                    isStaticQuery: false,
+                    isHook: false,
+                    templateLoc,
+                  }
+
+                  documentLocations.set(
+                    docInFile,
+                    `${innerPath.node.start}-${gqlAst.loc.start}`
+                  )
+
+                  documents.push(docInFile)
+                },
+              })
+            }
+          },
         })
 
         // Remove duplicate queries
