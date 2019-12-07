@@ -74,9 +74,20 @@ async function onCreateNode({
           astPath.node.left.type === `MemberExpression` &&
           astPath.node.left.property.name === `frontmatter`
         ) {
-          astPath.node.right.properties.forEach(node => {
-            frontmatter[node.key.name] = parseData(node.value)
-          })
+          if (
+            astPath.node.right.type === "Identifier" &&
+            astPath.node.right.name === "frontmatter"
+          ) {
+            astPath.scope.bindings.frontmatter.path.parent.declarations[0].init.properties.forEach(
+              node => {
+                frontmatter[node.key.name] = parseData(node.value)
+              }
+            )
+          } else {
+            astPath.node.right.properties.forEach(node => {
+              frontmatter[node.key.name] = parseData(node.value)
+            })
+          }
         }
       },
       ExportNamedDeclaration: function ExportNamedDeclaration(astPath) {
